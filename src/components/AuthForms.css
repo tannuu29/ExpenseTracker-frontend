@@ -265,6 +265,17 @@
   transform: translateY(0);
 }
 
+.auth-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.auth-submit-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
 /* Auth Footer */
 .auth-footer {
   text-align: center;

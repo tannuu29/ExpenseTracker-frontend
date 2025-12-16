@@ -62,6 +62,7 @@ export default function Header() {
         // Add profile navigation logic here
         console.log('Profile clicked')
         setIsMenuOpen(false)
+        navigate('/profile')
     }
 
     return (

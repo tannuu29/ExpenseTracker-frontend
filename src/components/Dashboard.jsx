@@ -48,20 +48,65 @@ export default function Dashboard() {
     loadAllExpenses();
   }, [])
 
+  // Helper function to get JWT token from localStorage
+  const getAuthToken = () => {
+    return localStorage.getItem('token')
+  }
+
+  // Helper function to make authenticated API calls
+  const fetchWithAuth = async (url, options = {}) => {
+    const token = getAuthToken()
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+
+    // Add Authorization header if token exists
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    return fetch(url, {
+      ...options,
+      headers
+    })
+  }
+
   const loadAllExpenses = () => {
-    fetch(`${API_BASE_URL}/allExpense`)
-      .then(res => res.json())
+    // Example: Using fetch with JWT token in Authorization header
+    fetchWithAuth(`${API_BASE_URL}/allExpense`)
+      .then(res => {
+        if (res.status === 401 || res.status === 403) {
+          // Token expired or invalid - redirect to login
+          localStorage.removeItem('token')
+          window.location.href = '/'
+          return
+        }
+        return res.json()
+      })
       .then(data => {
-        console.log("All Expenses Response:", data);
-        setExpenses(data);
+        if (data) {
+          console.log("All Expenses Response:", data);
+          setExpenses(data);
+        }
       })
       .catch(err => console.error("Error loading expenses:", err));
 
-    fetch(`${API_BASE_URL}/totalExpenses`)
-      .then(res => res.text())
+    fetchWithAuth(`${API_BASE_URL}/totalExpenses`)
+      .then(res => {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token')
+          window.location.href = '/'
+          return
+        }
+        return res.text()
+      })
       .then(msg => {
-        console.log("Total Expenses Response:", msg);
-        setTotalExpenses(Number(msg) || 0);
+        if (msg) {
+          console.log("Total Expenses Response:", msg);
+          setTotalExpenses(Number(msg) || 0);
+        }
       })
       .catch(err => console.error("Error loading total expenses:", err));
   }
@@ -119,21 +164,28 @@ export default function Dashboard() {
       date: formData.date       // must be yyyy-mm-dd
     };
 
-    fetch(`${API_BASE_URL}/addExpense`, {
+    fetchWithAuth(`${API_BASE_URL}/addExpense`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
       body: JSON.stringify(expenseData)
     })
-      .then(res => res.text())
+      .then(res => {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token')
+          window.location.href = '/'
+          return
+        }
+        return res.text()
+      })
       .then(msg => {
-        alert("Expense Added");
-        loadAllExpenses();   // refresh list
-        resetForm();
+        if (msg !== undefined) {
+          alert("Expense Added");
+          loadAllExpenses();   // refresh list
+          resetForm();
+        }
       })
       .catch(err => {
         console.error("Error adding expense:", err);
+        alert("Failed to add expense. Please try again.");
       });
   };
 
@@ -184,21 +236,30 @@ export default function Dashboard() {
 };
 
 
-    fetch(`${API_BASE_URL}/update/${editingExpense.id}`, {
+    fetchWithAuth(`${API_BASE_URL}/update/${editingExpense.id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(updatedData)
     })
-      .then(res => res.text())
-      .then(msg => {
-        console.log("Update Expense Response:", msg);
-        alert("Expense updated");
-        loadAllExpenses();
-        resetForm();
+      .then(res => {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token')
+          window.location.href = '/'
+          return
+        }
+        return res.text()
       })
-      .catch(err => console.error("Error updating expense:", err));
+      .then(msg => {
+        if (msg !== undefined) {
+          console.log("Update Expense Response:", msg);
+          alert("Expense updated");
+          loadAllExpenses();
+          resetForm();
+        }
+      })
+      .catch(err => {
+        console.error("Error updating expense:", err);
+        alert("Failed to update expense. Please try again.");
+      });
   };
 
 
@@ -221,15 +282,27 @@ export default function Dashboard() {
   const handleDeleteExpense = (id) => {
     if (!window.confirm("Are you sure you want to delete this expense?")) return;
 
-    fetch(`${API_BASE_URL}/delete/${id}`, {
+    fetchWithAuth(`${API_BASE_URL}/delete/${id}`, {
       method: "DELETE"
     })
-      .then(res => res.text())
-      .then(msg => {
-        console.log("Delete Expense Response:", msg);
-        loadAllExpenses();
+      .then(res => {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token')
+          window.location.href = '/'
+          return
+        }
+        return res.text()
       })
-      .catch(err => console.error("Error deleting expense:", err));
+      .then(msg => {
+        if (msg !== undefined) {
+          console.log("Delete Expense Response:", msg);
+          loadAllExpenses();
+        }
+      })
+      .catch(err => {
+        console.error("Error deleting expense:", err);
+        alert("Failed to delete expense. Please try again.");
+      });
   };
 
 
@@ -277,11 +350,20 @@ export default function Dashboard() {
   const handleSearchFilters = () => {
     // Priority: If amount filter has both min and max, use amount filter API
     if (filterData.minAmount && filterData.maxAmount) {
-      fetch(`${API_BASE_URL}/amountFilter?minAmount=${filterData.minAmount}&maxAmount=${filterData.maxAmount}`)
-        .then(res => res.json())
+      fetchWithAuth(`${API_BASE_URL}/amountFilter?minAmount=${filterData.minAmount}&maxAmount=${filterData.maxAmount}`)
+        .then(res => {
+          if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('token')
+            window.location.href = '/'
+            return
+          }
+          return res.json()
+        })
         .then(data => {
-          console.log("Amount Filter Response:", data);
-          setExpenses(data);
+          if (data) {
+            console.log("Amount Filter Response:", data);
+            setExpenses(data);
+          }
         })
         .catch(err => console.error("Error filtering by amount:", err));
       return;
@@ -291,11 +373,20 @@ export default function Dashboard() {
     if (filterData.dateFrom || filterData.dateTo) {
       const from = filterData.dateFrom || filterData.dateTo; // If only one is provided, use it for both
       const to = filterData.dateTo || filterData.dateFrom;
-      fetch(`${API_BASE_URL}/dateFilter?from=${from}&to=${to}`)
-        .then(res => res.json())
+      fetchWithAuth(`${API_BASE_URL}/dateFilter?from=${from}&to=${to}`)
+        .then(res => {
+          if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('token')
+            window.location.href = '/'
+            return
+          }
+          return res.json()
+        })
         .then(data => {
-          console.log("Date Filter Response:", data);
-          setExpenses(data);
+          if (data) {
+            console.log("Date Filter Response:", data);
+            setExpenses(data);
+          }
         })
         .catch(err => console.error("Error filtering by date:", err));
       return;
@@ -303,11 +394,20 @@ export default function Dashboard() {
 
     // If category (paymentMode) is selected
     if (filterData.paymentMode) {
-      fetch(`${API_BASE_URL}/paymentMode?paymentMode=${filterData.paymentMode}`)
-        .then(res => res.json())
+      fetchWithAuth(`${API_BASE_URL}/paymentMode?paymentMode=${filterData.paymentMode}`)
+        .then(res => {
+          if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('token')
+            window.location.href = '/'
+            return
+          }
+          return res.json()
+        })
         .then(data => {
-          console.log("Payment Mode Filter Response:", data);
-          setExpenses(data);
+          if (data) {
+            console.log("Payment Mode Filter Response:", data);
+            setExpenses(data);
+          }
         })
         .catch(err => console.error("Error filtering by payment mode:", err));
       return;

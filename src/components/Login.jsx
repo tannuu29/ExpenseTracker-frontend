@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import './AuthForms.css'
 
+const API_BASE_URL = "http://localhost:80"
+
 export default function Login({ onClose, onSwitchToSignUp }) {
+  const [formData, setFormData] = useState({
+    usernameOrEmail: '',
+    password: ''
+  })
+  const [showPassword, setShowPassword] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [isLoading, setIsLoading] = useState(false)
+  const [loginError, setLoginError] = useState('')
+
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
@@ -17,12 +28,6 @@ export default function Login({ onClose, onSwitchToSignUp }) {
       document.body.style.overflow = 'unset'
     }
   }, [onClose])
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [errors, setErrors] = useState({})
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -42,10 +47,19 @@ export default function Login({ onClose, onSwitchToSignUp }) {
   const validateForm = () => {
     const newErrors = {}
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email'
+    if (!formData.usernameOrEmail.trim()) {
+      newErrors.usernameOrEmail = 'Username or Email is required'
+    } else {
+      // If it contains @, validate as email, otherwise accept as username
+      if (formData.usernameOrEmail.includes('@')) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.usernameOrEmail)) {
+          newErrors.usernameOrEmail = 'Please enter a valid email'
+        }
+      }
+      // Username validation - just check it's not empty and has reasonable length
+      else if (formData.usernameOrEmail.trim().length < 3) {
+        newErrors.usernameOrEmail = 'Username must be at least 3 characters'
+      }
     }
 
     if (!formData.password) {
@@ -58,13 +72,64 @@ export default function Login({ onClose, onSwitchToSignUp }) {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
+    console.log("LOGIN SUBMIT TRIGGERED"); // 🔥 ADD THIS
     e.preventDefault()
-    if (validateForm()) {
-      // Handle login logic here
-      console.log('Login submitted:', formData)
-      // You can add API call here
-      // onClose() // Close modal after successful login
+    setLoginError('')
+    
+    if (!validateForm()) {
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // Call login API
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: formData.usernameOrEmail, // Backend expects "username" field
+          password: formData.password
+        })
+      })
+
+      // Handle 401 Unauthorized (invalid credentials)
+      if (response.status === 401) {
+        setLoginError('Invalid username or password. Please try again.')
+        setIsLoading(false)
+        return
+      }
+
+      // Handle other errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        setLoginError(errorData.message || 'Login failed. Please try again.')
+        setIsLoading(false)
+        return
+      }
+
+      // Success - get token from response
+      const data = await response.json()
+      
+      if (data.token) {
+        // Store JWT token in localStorage
+        localStorage.setItem('token', data.token)
+        console.log('Login successful! Token stored in localStorage.')
+        
+        // Close modal and redirect to dashboard
+        onClose()
+        window.location.href = '/dashboard'
+      } else {
+        setLoginError('Invalid response from server. Please try again.')
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      setLoginError('Network error. Please check your connection and try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -85,19 +150,19 @@ export default function Login({ onClose, onSwitchToSignUp }) {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email Address
+            <label htmlFor="usernameOrEmail" className="form-label">
+              Username or Email Address
             </label>
             <input
-              type="email"
-              id="email"
-              name="email"
-              className={`form-input ${errors.email ? 'form-input-error' : ''}`}
-              placeholder="Enter your email"
-              value={formData.email}
+              type="text"
+              id="usernameOrEmail"
+              name="usernameOrEmail"
+              className={`form-input ${errors.usernameOrEmail ? 'form-input-error' : ''}`}
+              placeholder="Enter your username or email"
+              value={formData.usernameOrEmail}
               onChange={handleChange}
             />
-            {errors.email && <span className="error-message">{errors.email}</span>}
+            {errors.usernameOrEmail && <span className="error-message">{errors.usernameOrEmail}</span>}
           </div>
 
           <div className="form-group">
@@ -146,8 +211,18 @@ export default function Login({ onClose, onSwitchToSignUp }) {
             </button>
           </div>
 
-          <button type="submit" className="auth-submit-btn">
-            Login
+          {loginError && (
+            <div className="error-message" style={{ marginBottom: '16px', textAlign: 'center' }}>
+              {loginError}
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            className="auth-submit-btn"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
