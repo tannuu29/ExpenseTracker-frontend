@@ -36,7 +36,7 @@ export default function ChangePassword() {
 
     if (!validate()) return
 
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token')?.trim();
     if (!token) {
       setStatus({ type: 'error', message: 'You are not logged in. Please login again.' })
       return
@@ -49,7 +49,7 @@ export default function ChangePassword() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${localStorage.getItem("token")?.trim()}`,
         },
         body: JSON.stringify({
           oldPassword: formData.oldPassword,
@@ -59,10 +59,10 @@ export default function ChangePassword() {
 
       console.log('Change password status:', res.status)
 
-      // 🔥 HANDLE AUTH ERRORS FIRST
+      // Don't auto-logout on first 401 - might be temporary
       if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem('token')
-        setStatus({ type: 'error', message: 'You are not authorized. Please login again.' })
+        setStatus({ type: 'error', message: 'Authentication failed. Please check your old password and try again.' })
+        setIsLoading(false)
         return
       }
 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './AuthForms.css'
 
 const API_BASE_URL = "http://localhost:80"
 
 export default function Login({ onClose, onSwitchToSignUp }) {
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     usernameOrEmail: '',
     password: ''
@@ -85,7 +87,10 @@ export default function Login({ onClose, onSwitchToSignUp }) {
 
     try {
       // Call login API
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const loginUrl = `${API_BASE_URL}/login`;
+      console.log('Attempting login to:', loginUrl);
+      
+      const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -96,9 +101,19 @@ export default function Login({ onClose, onSwitchToSignUp }) {
         })
       })
 
-      // Handle 401 Unauthorized (invalid credentials)
+      // Handle 401 Unauthorized - logout if token exists, show error
       if (response.status === 401) {
+        // Clear any existing tokens (logout)
+        localStorage.removeItem('token')
+        localStorage.removeItem('role')
         setLoginError('Invalid username or password. Please try again.')
+        setIsLoading(false)
+        return
+      }
+
+      // Handle 403 Forbidden - do NOT logout, just show error
+      if (response.status === 403) {
+        setLoginError('Access forbidden. Please contact administrator.')
         setIsLoading(false)
         return
       }
@@ -106,28 +121,41 @@ export default function Login({ onClose, onSwitchToSignUp }) {
       // Handle other errors
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        setLoginError(errorData.message || 'Login failed. Please try again.')
+        setLoginError(errorData.message || `Login failed (${response.status}). Please try again.`)
         setIsLoading(false)
         return
       }
 
-      // Success - get token from response
+      // Success - get token and role from response
       const data = await response.json()
       
       if (data.token) {
-        // Store JWT token in localStorage
+        // Store JWT token in localStorage under key "token"
         localStorage.setItem('token', data.token)
-        console.log('Login successful! Token stored in localStorage.')
+        
+        // Store user role in localStorage under key "role"
+        if (data.role) {
+          localStorage.setItem('role', data.role)
+        }
+        
+        // Minimal console logs for debugging
+        console.log('Login successful - Token stored:', data.token.substring(0, 20) + '...')
+        console.log('Login successful - Role stored:', data.role || 'N/A')
         
         // Close modal and redirect to dashboard
         onClose()
-        window.location.href = '/dashboard'
+        // Use navigate instead of window.location.href to avoid full page reload
+        navigate('/dashboard', { replace: true })
       } else {
         setLoginError('Invalid response from server. Please try again.')
       }
     } catch (error) {
       console.error('Login error:', error)
-      setLoginError('Network error. Please check your connection and try again.')
+      if (error.message.includes('Failed to fetch') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        setLoginError('Cannot connect to server. Please make sure the backend server is running on http://localhost:80')
+      } else {
+        setLoginError('Network error. Please check your connection and try again.')
+      }
     } finally {
       setIsLoading(false)
     }

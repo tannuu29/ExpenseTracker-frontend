@@ -7,6 +7,7 @@ export default function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const location = useLocation()
     const navigate = useNavigate()
+    const role = localStorage.getItem('role')
     const [theme, setTheme] = useState(() => {
         const savedTheme = localStorage.getItem('theme') || 'dark'
         return savedTheme
@@ -52,8 +53,9 @@ export default function Header() {
     }
 
     const handleLogout = () => {
-        // Add logout logic here
-        console.log('Logout clicked')
+        // Simple logout: clear auth and go home
+        localStorage.removeItem('token')
+        localStorage.removeItem('role')
         setIsMenuOpen(false)
         navigate('/')
     }
@@ -88,9 +90,11 @@ export default function Header() {
                     
                     <div className="collapse navbar-collapse" id="navbarNavAltMarkup">
                         <div className="navbar-nav">
-                            <NavLink className="nav-link" to="/dashboard">
-                                Dashboard
-                            </NavLink>
+                            {role !== 'ADMIN' && (
+                                <NavLink className="nav-link" to="/dashboard">
+                                    Dashboard
+                                </NavLink>
+                            )}
                             <NavLink className="nav-link" to="/about">
                                 About
                             </NavLink>

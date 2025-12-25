@@ -42,7 +42,7 @@ export default function UpdateProfile() {
 
     if (!validate()) return
 
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token')?.trim();
     if (!token) {
       setStatus({ type: 'error', message: 'You are not logged in. Please login again.' })
       return
@@ -54,7 +54,7 @@ export default function UpdateProfile() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${localStorage.getItem("token")?.trim()}`,
         },
         body: JSON.stringify({
           fullName: formData.fullName.trim(),
@@ -63,15 +63,16 @@ export default function UpdateProfile() {
         }),
       })
 
-      // 🔥 HANDLE AUTH PROPERLY
+      // Don't auto-logout on first 401 - might be temporary
       if (res.status === 401) {
-        localStorage.removeItem('token')
-        setStatus({ type: 'error', message: 'Session expired. Please login again.' })
+        setStatus({ type: 'error', message: 'Authentication failed. Please try again.' })
+        setIsLoading(false)
         return
       }
 
       if (res.status === 403) {
         setStatus({ type: 'error', message: 'You are not allowed to update profile.' })
+        setIsLoading(false)
         return
       }
 

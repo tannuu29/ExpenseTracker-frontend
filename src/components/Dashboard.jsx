@@ -3,6 +3,7 @@ import Header from './Header'
 import './Dashboard.css'
 
 const API_BASE_URL = "http://localhost:80"
+const EXPENSE_BASE_URL = "http://localhost:80/expenses";
 
 export default function Dashboard() {
 
@@ -45,24 +46,46 @@ export default function Dashboard() {
   // NEW: Load all expenses from backend
   // --------------------------------------------
   useEffect(() => {
-    loadAllExpenses();
+    // Small delay to ensure localStorage is available after redirect
+    const timer = setTimeout(() => {
+      // If an ADMIN logs in, keep them inside the Admin area
+      const role = localStorage.getItem('role');
+      const token = localStorage.getItem('token');
+      
+      console.log("Dashboard mounted - role:", role, "token exists:", !!token);
+      
+      if (role === 'ADMIN') {
+        window.location.href = '/admin/users';
+        return;
+      }
+      
+      if (!token) {
+        console.error("No token on Dashboard mount, redirecting to login");
+        window.location.href = '/';
+        return;
+      }
+      
+      loadAllExpenses();
+    }, 100); // Small delay to ensure localStorage is ready
+    
+    return () => clearTimeout(timer);
   }, [])
 
   // Helper function to get JWT token from localStorage
   const getAuthToken = () => {
-    return localStorage.getItem('token')
+    return localStorage.getItem('token')?.trim();
   }
 
   // Helper function to make authenticated API calls
   const fetchWithAuth = async (url, options = {}) => {
-    const token = getAuthToken()
+    const token = localStorage.getItem("token")?.trim();
     
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers
     }
 
-    // Add Authorization header if token exists
+    // Always send Authorization header if token exists
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
@@ -74,16 +97,32 @@ export default function Dashboard() {
   }
 
   const loadAllExpenses = () => {
+    const token = getAuthToken();
+    console.log("loadAllExpenses called, token exists:", !!token);
+    
+    if (!token) {
+      console.error("No token found, redirecting to login");
+      window.location.href = '/';
+      return;
+    }
+
+    console.log("Fetching expenses with token:", token.substring(0, 20) + "...");
+
     // Example: Using fetch with JWT token in Authorization header
-    fetchWithAuth(`${API_BASE_URL}/allExpense`)
+    fetchWithAuth(`${EXPENSE_BASE_URL}/allExpense`)
       .then(res => {
+        console.log("allExpense response status:", res.status);
         if (res.status === 401 || res.status === 403) {
-          // Token expired or invalid - redirect to login
-          localStorage.removeItem('token')
-          window.location.href = '/'
-          return
+          // Don't auto-logout on first 401 - might be temporary or token issue
+          console.warn("Auth error - but not logging out immediately");
+          // Show error but don't redirect - let user retry
+          return null;
         }
-        return res.json()
+        if (!res.ok) {
+          console.error("API error (non-auth):", res.status);
+          return null;
+        }
+        return res.json();
       })
       .then(data => {
         if (data) {
@@ -91,16 +130,24 @@ export default function Dashboard() {
           setExpenses(data);
         }
       })
-      .catch(err => console.error("Error loading expenses:", err));
+      .catch(err => {
+        console.error("Error loading expenses:", err);
+        // Don't redirect on network errors - token might still be valid
+      });
 
-    fetchWithAuth(`${API_BASE_URL}/totalExpenses`)
+    fetchWithAuth(`${EXPENSE_BASE_URL}/totalExpenses`)
       .then(res => {
+        console.log("totalExpenses response status:", res.status);
         if (res.status === 401 || res.status === 403) {
-          localStorage.removeItem('token')
-          window.location.href = '/'
-          return
+          // Don't auto-logout on first 401
+          console.warn("Auth error on totalExpenses - but not logging out immediately");
+          return null;
         }
-        return res.text()
+        if (!res.ok) {
+          console.error("totalExpenses API error (non-auth):", res.status);
+          return null;
+        }
+        return res.text();
       })
       .then(msg => {
         if (msg) {
@@ -164,20 +211,25 @@ export default function Dashboard() {
       date: formData.date       // must be yyyy-mm-dd
     };
 
-    fetchWithAuth(`${API_BASE_URL}/addExpense`, {
+    fetchWithAuth(`${EXPENSE_BASE_URL}/addExpense`, {
       method: "POST",
       body: JSON.stringify(expenseData)
     })
       .then(res => {
         if (res.status === 401 || res.status === 403) {
-          localStorage.removeItem('token')
-          window.location.href = '/'
-          return
+          // Don't auto-logout on first 401
+          console.warn("Auth error on addExpense - showing error message");
+          alert("Authentication failed. Please try again or login.");
+          return null;
         }
-        return res.text()
+        if (!res.ok) {
+          alert("Failed to add expense. Please try again.");
+          return null;
+        }
+        return res.text();
       })
       .then(msg => {
-        if (msg !== undefined) {
+        if (msg !== undefined && msg !== null) {
           alert("Expense Added");
           loadAllExpenses();   // refresh list
           resetForm();
@@ -236,20 +288,25 @@ export default function Dashboard() {
 };
 
 
-    fetchWithAuth(`${API_BASE_URL}/update/${editingExpense.id}`, {
+    fetchWithAuth(`${EXPENSE_BASE_URL}/update/${editingExpense.id}`, {
       method: "PUT",
       body: JSON.stringify(updatedData)
     })
       .then(res => {
         if (res.status === 401 || res.status === 403) {
-          localStorage.removeItem('token')
-          window.location.href = '/'
-          return
+          // Don't auto-logout on first 401
+          console.warn("Auth error on updateExpense - showing error message");
+          alert("Authentication failed. Please try again or login.");
+          return null;
         }
-        return res.text()
+        if (!res.ok) {
+          alert("Failed to update expense. Please try again.");
+          return null;
+        }
+        return res.text();
       })
       .then(msg => {
-        if (msg !== undefined) {
+        if (msg !== undefined && msg !== null) {
           console.log("Update Expense Response:", msg);
           alert("Expense updated");
           loadAllExpenses();
@@ -282,19 +339,24 @@ export default function Dashboard() {
   const handleDeleteExpense = (id) => {
     if (!window.confirm("Are you sure you want to delete this expense?")) return;
 
-    fetchWithAuth(`${API_BASE_URL}/delete/${id}`, {
+    fetchWithAuth(`${EXPENSE_BASE_URL}/delete/${id}`, {
       method: "DELETE"
     })
       .then(res => {
         if (res.status === 401 || res.status === 403) {
-          localStorage.removeItem('token')
-          window.location.href = '/'
-          return
+          // Don't auto-logout on first 401
+          console.warn("Auth error on deleteExpense - showing error message");
+          alert("Authentication failed. Please try again or login.");
+          return null;
         }
-        return res.text()
+        if (!res.ok) {
+          alert("Failed to delete expense. Please try again.");
+          return null;
+        }
+        return res.text();
       })
       .then(msg => {
-        if (msg !== undefined) {
+        if (msg !== undefined && msg !== null) {
           console.log("Delete Expense Response:", msg);
           loadAllExpenses();
         }
@@ -350,14 +412,19 @@ export default function Dashboard() {
   const handleSearchFilters = () => {
     // Priority: If amount filter has both min and max, use amount filter API
     if (filterData.minAmount && filterData.maxAmount) {
-      fetchWithAuth(`${API_BASE_URL}/amountFilter?minAmount=${filterData.minAmount}&maxAmount=${filterData.maxAmount}`)
+      fetchWithAuth(`${EXPENSE_BASE_URL}/amountFilter?minAmount=${filterData.minAmount}&maxAmount=${filterData.maxAmount}`)
         .then(res => {
           if (res.status === 401 || res.status === 403) {
-            localStorage.removeItem('token')
-            window.location.href = '/'
-            return
+            // Don't auto-logout on first 401
+            console.warn("Auth error on amountFilter - showing error message");
+            alert("Authentication failed. Please try again or login.");
+            return null;
           }
-          return res.json()
+          if (!res.ok) {
+            console.error("Amount filter error:", res.status);
+            return null;
+          }
+          return res.json();
         })
         .then(data => {
           if (data) {
@@ -373,14 +440,19 @@ export default function Dashboard() {
     if (filterData.dateFrom || filterData.dateTo) {
       const from = filterData.dateFrom || filterData.dateTo; // If only one is provided, use it for both
       const to = filterData.dateTo || filterData.dateFrom;
-      fetchWithAuth(`${API_BASE_URL}/dateFilter?from=${from}&to=${to}`)
+      fetchWithAuth(`${EXPENSE_BASE_URL}/dateFilter?from=${from}&to=${to}`)
         .then(res => {
           if (res.status === 401 || res.status === 403) {
-            localStorage.removeItem('token')
-            window.location.href = '/'
-            return
+            // Don't auto-logout on first 401
+            console.warn("Auth error on dateFilter - showing error message");
+            alert("Authentication failed. Please try again or login.");
+            return null;
           }
-          return res.json()
+          if (!res.ok) {
+            console.error("Date filter error:", res.status);
+            return null;
+          }
+          return res.json();
         })
         .then(data => {
           if (data) {
@@ -394,14 +466,16 @@ export default function Dashboard() {
 
     // If category (paymentMode) is selected
     if (filterData.paymentMode) {
-      fetchWithAuth(`${API_BASE_URL}/paymentMode?paymentMode=${filterData.paymentMode}`)
+      fetchWithAuth(`${EXPENSE_BASE_URL}/paymentMode?paymentMode=${filterData.paymentMode}`)
         .then(res => {
           if (res.status === 401 || res.status === 403) {
-            localStorage.removeItem('token')
-            window.location.href = '/'
-            return
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            console.error("API failed with status", res.status);
+            window.location.href = '/';
+            return;
           }
-          return res.json()
+          return res.json();
         })
         .then(data => {
           if (data) {

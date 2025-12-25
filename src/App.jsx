@@ -6,6 +6,11 @@ import About from './components/About'
 import ContactUs from './components/ContactUs'
 import Profile from './components/Profile'
 import ChangePassword from './components/ChangePassword'
+import AdminUsers from './components/AdminUsers'
+import AdminRoute from './components/AdminRoute'
+import AdminLogin from './components/AdminLogin'
+import AdminLayout from './components/AdminLayout'
+import AdminUserDetails from './components/AdminUserDetails'
 
 function App() {
   return (
@@ -17,6 +22,18 @@ function App() {
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<ContactUs />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }
+        >
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="users/:id" element={<AdminUserDetails />} />
+        </Route>
       </Routes>
     </Router>
   )
