@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import Header from './Header'
+import { fetchWithAuth, API_BASE_URL } from '../utils/auth'
 import './Dashboard.css'
 
-const API_BASE_URL = "http://localhost:80"
 const EXPENSE_BASE_URL = "http://localhost:80/expenses";
 
 export default function Dashboard() {
@@ -74,26 +74,6 @@ export default function Dashboard() {
   // Helper function to get JWT token from localStorage
   const getAuthToken = () => {
     return localStorage.getItem('token')?.trim();
-  }
-
-  // Helper function to make authenticated API calls
-  const fetchWithAuth = async (url, options = {}) => {
-    const token = localStorage.getItem("token")?.trim();
-    
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
-
-    // Always send Authorization header if token exists
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
-    return fetch(url, {
-      ...options,
-      headers
-    })
   }
 
   const loadAllExpenses = () => {

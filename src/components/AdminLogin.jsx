@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE_URL = "http://localhost:80";
+import { fetchWithAuth, API_BASE_URL } from "../utils/auth";
 
 /**
  * Dedicated Admin Login page.
@@ -56,8 +55,8 @@ export default function AdminLogin() {
       localStorage.setItem("token", token.trim());
 
       // Step 2: verify this token can access ADMIN APIs
-      const check = await fetch(`${API_BASE_URL}/admin/users`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")?.trim()}` },
+      const check = await fetchWithAuth(`${API_BASE_URL}/admin/users`, {
+        method: "GET",
       });
 
       if (check.status === 401 || check.status === 403) {

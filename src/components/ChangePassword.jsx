@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { fetchWithAuth, API_BASE_URL } from '../utils/auth'
 import './AuthForms.css'
 
-const API_BASE_URL = 'http://localhost:80'
-
 export default function ChangePassword() {
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     oldPassword: '',
     newPassword: '',
@@ -45,12 +46,8 @@ export default function ChangePassword() {
     setIsLoading(true)
     try {
       console.log('JWT being sent:', token)
-      const res = await fetch(`${API_BASE_URL}/changePass`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/changePass`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem("token")?.trim()}`,
-        },
         body: JSON.stringify({
           oldPassword: formData.oldPassword,
           newPassword: formData.newPassword,
@@ -140,9 +137,19 @@ export default function ChangePassword() {
           </div>
         )}
 
-        <button className="auth-submit-btn" type="submit" disabled={isLoading}>
-          {isLoading ? 'Updating...' : 'Change Password'}
-        </button>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button
+            type="button"
+            className="auth-submit-btn"
+            onClick={() => navigate('/profile')}
+            style={{ backgroundColor: '#6c757d', width: 'auto', minWidth: '120px' }}
+          >
+            Back
+          </button>
+          <button className="auth-submit-btn" type="submit" disabled={isLoading}>
+            {isLoading ? 'Updating...' : 'Change Password'}
+          </button>
+        </div>
       </form>
     </div>
   )

@@ -101,14 +101,14 @@ export default function SignUp({ onClose, onSwitchToLogin }) {
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="name" className="form-label">
-              Full Name
+              Name
             </label>
             <input
               type="text"
               id="name"
               name="name"
               className={`form-input ${errors.name ? 'form-input-error' : ''}`}
-              placeholder="Enter your full name"
+              placeholder="Enter your name"
               value={formData.name}
               onChange={handleChange}
             />

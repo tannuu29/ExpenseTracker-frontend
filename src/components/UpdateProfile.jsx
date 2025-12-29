@@ -1,15 +1,26 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { fetchWithAuth, API_BASE_URL } from '../utils/auth'
 import './AuthForms.css'
 
-const API_BASE_URL = 'http://localhost:80'
-
-export default function UpdateProfile() {
+export default function UpdateProfile({ initialData, onUpdateSuccess }) {
   const [formData, setFormData] = useState({
-    fullName: '',
+    name: '',
     username: '', // shown but NOT sent to backend
     email: '',
     mobile: '',
   })
+
+  // Initialize form data when initialData prop is received
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        username: initialData.username || '',
+        email: initialData.email || '',
+        mobile: initialData.mobile || initialData.phone || '',
+      })
+    }
+  }, [initialData])
 
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
@@ -24,7 +35,7 @@ export default function UpdateProfile() {
   const validate = () => {
     const next = {}
 
-    if (!formData.fullName.trim()) next.fullName = 'Full name is required'
+    if (!formData.name.trim()) next.name = 'Name is required'
 
     if (!formData.email.trim()) next.email = 'Email is required'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) next.email = 'Enter a valid email'
@@ -50,14 +61,10 @@ export default function UpdateProfile() {
 
     setIsLoading(true)
     try {
-      const res = await fetch(`${API_BASE_URL}/profile`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/profile`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem("token")?.trim()}`,
-        },
         body: JSON.stringify({
-          fullName: formData.fullName.trim(),
+          name: formData.name.trim(),
           email: formData.email.trim(),
           mobile: formData.mobile.trim(),
         }),
@@ -88,6 +95,21 @@ export default function UpdateProfile() {
 
       const data = await res.json()
       setStatus({ type: 'success', message: data.message || 'Profile updated successfully' })
+      
+      // Update form with response data if available to ensure consistency
+      if (data.name !== undefined || data.email !== undefined || data.mobile !== undefined) {
+        setFormData(prev => ({
+          ...prev,
+          name: data.name !== undefined ? data.name : prev.name,
+          email: data.email !== undefined ? data.email : prev.email,
+          mobile: data.mobile !== undefined ? data.mobile : prev.mobile,
+        }))
+      }
+      
+      // Notify parent to refetch profile data
+      if (onUpdateSuccess) {
+        onUpdateSuccess(data)
+      }
     } catch (err) {
       setStatus({ type: 'error', message: 'Network error. Please try again.' })
     } finally {
@@ -111,19 +133,19 @@ export default function UpdateProfile() {
           }}
         >
           <div className="form-group">
-            <label className="form-label" htmlFor="fullName">
-              Full Name
+            <label className="form-label" htmlFor="name">
+              Name
             </label>
             <input
-              id="fullName"
-              name="fullName"
+              id="name"
+              name="name"
               type="text"
-              className={`form-input ${errors.fullName ? 'form-input-error' : ''}`}
-              value={formData.fullName}
+              className={`form-input ${errors.name ? 'form-input-error' : ''}`}
+              value={formData.name}
               onChange={handleChange}
-              placeholder="Enter your full name"
+              placeholder="Enter your name"
             />
-            {errors.fullName && <span className="error-message">{errors.fullName}</span>}
+            {errors.name && <span className="error-message">{errors.name}</span>}
           </div>
 
           <div className="form-group">

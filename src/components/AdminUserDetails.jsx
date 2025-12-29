@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-
-const API_BASE_URL = "http://localhost:80";
+import { fetchWithAuth, API_BASE_URL } from "../utils/auth";
 
 export default function AdminUserDetails() {
   const { id } = useParams();
@@ -23,8 +22,8 @@ export default function AdminUserDetails() {
       }
 
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/user/${id}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")?.trim()}` },
+        const res = await fetchWithAuth(`${API_BASE_URL}/admin/user/${id}`, {
+          method: "GET",
         });
 
         if (!res.ok) {

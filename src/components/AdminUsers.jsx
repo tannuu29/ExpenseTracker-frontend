@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { fetchWithAuth } from "../utils/auth";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -22,11 +23,8 @@ export default function AdminUsers() {
       }
 
       try {
-        const res = await fetch("http://localhost:80/admin/users", {
+        const res = await fetchWithAuth("http://localhost:80/admin/users", {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")?.trim()}`,
-          },
         });
 
         if (!res.ok) {
