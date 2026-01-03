@@ -38,7 +38,7 @@ Node.js
 npm
 
 ### Steps to Run
-git clone <repository-url>
+git clone <[repository-url](https://github.com/tannuu29/ExpenseTracker-frontend.git)>
 cd expense-management-frontend
 npm install
 npm run dev
